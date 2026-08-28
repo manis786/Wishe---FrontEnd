@@ -33,7 +33,7 @@ const Home = () => {
       }
     }
 
-    axios.get('http://localhost:5000/api/products')
+    axios.get('https://wishebackendserver.vercel.app/api/products')
       .then(res => setProducts(res.data))
       .catch(err => console.error("Error fetching products:", err));
 
@@ -53,7 +53,7 @@ const Home = () => {
     if (!comment) return;
 
     try {
-      const res = await axios.post(`http://localhost:5000/api/products/${productId}/review`, {
+      const res = await axios.post(`https://wishebackendserver.vercel.app/api/products/${productId}/review`, {
         name: "Customer",
         comment
       });
@@ -67,7 +67,7 @@ const Home = () => {
   const handleContactSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post('http://localhost:5000/api/contact', contactForm);
+      await axios.post('https://wishebackendserver.vercel.app/api/contact', contactForm);
       setContactStatus('Message sent successfully!');
       setContactForm({ name: '', email: '', message: '' });
     } catch (err) {

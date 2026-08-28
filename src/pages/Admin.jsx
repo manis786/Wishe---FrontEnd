@@ -36,7 +36,7 @@ const Admin = () => {
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post('http://localhost:5000/api/admin/login', {
+      const response = await axios.post('https://wishebackendserver.vercel.app/api/admin/login', {
         username: usernameInput,
         password: passwordInput
       });
@@ -61,7 +61,7 @@ const Admin = () => {
 
   const fetchProducts = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/products');
+      const res = await axios.get('https://wishebackendserver.vercel.app/api/products');
       setProducts(res.data);
     } catch (err) {
       console.error("Error fetching products:", err);
@@ -119,7 +119,7 @@ const Admin = () => {
 
     try {
       if (isEditing) {
-        await axios.put(`http://localhost:5000/api/products/${currentProductId}`, data, {
+        await axios.put(`https://wishebackendserver.vercel.app/api/products/${currentProductId}`, data, {
           headers: {
             'Content-Type': 'multipart/form-data',
             'Authorization': `Bearer ${token}`
@@ -127,7 +127,7 @@ const Admin = () => {
         });
         alert('Product updated successfully!');
       } else {
-        await axios.post('http://localhost:5000/api/products', data, {
+        await axios.post('https://wishebackendserver.vercel.app/api/products', data, {
           headers: {
             'Content-Type': 'multipart/form-data',
             'Authorization': `Bearer ${token}`
@@ -150,7 +150,7 @@ const Admin = () => {
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this product?")) {
       try {
-        await axios.delete(`http://localhost:5000/api/products/${id}`);
+        await axios.delete(`https://wishebackendserver.vercel.app/api/products/${id}`);
         fetchProducts();
       } catch (err) {
         console.error("Error deleting product:", err);

@@ -21,7 +21,7 @@ const ProductDetails = () => {
     setCartCount(totalCount);
 
     document.documentElement.style.scrollBehavior = 'smooth';
-    axios.get(`http://localhost:5000/api/products/${id}`)
+    axios.get(`https://wishebackendserver.vercel.app/api/products/${id}`)
       .then(res => {
         setProduct(res.data);
         setIsFetching(false);
