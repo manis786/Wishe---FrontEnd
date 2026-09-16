@@ -4,16 +4,15 @@ import axios from 'axios';
 import Navbar from '../components/Navbar';
 import CartDrawer from '../components/CartDrawer';
 
-const Home = () => {
+const Home = ({ products: propProducts }) => {
   const navigate = useNavigate();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [products, setProducts] = useState([]);
+  const [products, setProducts] = useState(propProducts || []);
   const [cart, setCart] = useState([]);
   const [selectedSizes, setSelectedSizes] = useState({});
-  const [reviewInputs, setReviewInputs] = useState({});
 
   // Contact form state
   const [contactForm, setContactForm] = useState({ name: '', email: '', message: '' });
@@ -33,14 +32,19 @@ const Home = () => {
       }
     }
 
-    axios.get('https://wishebackendserver.vercel.app/api/products')
-      .then(res => setProducts(res.data))
-      .catch(err => console.error("Error fetching products:", err));
+    // Agar App.jsx se props mein products nahi aaye toh fallback fetch
+    if (!propProducts || propProducts.length === 0) {
+      axios.get('https://wishebackendserver.vercel.app/api/products')
+        .then(res => setProducts(res.data))
+        .catch(err => console.error("Error fetching products:", err));
+    } else {
+      setProducts(propProducts);
+    }
 
     return () => {
       document.documentElement.style.scrollBehavior = 'auto';
     };
-  }, []);
+  }, [propProducts]);
 
   const toggleCart = () => setIsCartOpen(!isCartOpen);
 
@@ -48,20 +52,42 @@ const Home = () => {
     setSelectedSizes(prev => ({ ...prev, [productId]: size }));
   };
 
-  const handleReviewSubmit = async (productId) => {
-    const comment = reviewInputs[productId];
-    if (!comment) return;
+  // Cart mein product add karne ka function (Sale Price fix ke sath)
+  const handleAddToCart = (product) => {
+    const currentSize = selectedSizes[product._id] || '50ml';
+    const is100ml = currentSize === '100ml';
+    
+    const regularPrice = is100ml ? product.price100ml : product.price50ml;
+    const discountPrice = is100ml ? product.discountPrice100ml : product.discountPrice50ml;
+    const isCurrentSizeOnSale = discountPrice && String(discountPrice).trim() !== '';
 
-    try {
-      const res = await axios.post(`https://wishebackendserver.vercel.app/api/products/${productId}/review`, {
-        name: "Customer",
-        comment
-      });
-      setProducts(prev => prev.map(p => p._id === productId ? res.data : p));
-      setReviewInputs(prev => ({ ...prev, [productId]: '' }));
-    } catch (err) {
-      console.error("Error adding review:", err);
-    }
+    // Agar sale lagi hai toh discount price jayegi, warna regular price
+    const finalPrice = isCurrentSizeOnSale ? discountPrice : regularPrice;
+
+    const cartItem = {
+      id: `${product._id}-${currentSize}`,
+      productId: product._id,
+      name: product.name,
+      image: product.image,
+      size: currentSize,
+      price: finalPrice,
+      quantity: 1
+    };
+
+    setCart(prevCart => {
+      const existingIndex = prevCart.findIndex(item => item.id === cartItem.id);
+      let updatedCart;
+      if (existingIndex > -1) {
+        updatedCart = [...prevCart];
+        updatedCart[existingIndex].quantity += 1;
+      } else {
+        updatedCart = [...prevCart, cartItem];
+      }
+      localStorage.setItem('cart', JSON.stringify(updatedCart));
+      return updatedCart;
+    });
+
+    setIsCartOpen(true);
   };
 
   const handleContactSubmit = async (e) => {
@@ -107,7 +133,15 @@ const Home = () => {
       />
 
       {/* Hero Section */}
-      <header id="home" className="hero-section" style={{ background: 'linear-gradient(rgba(0,0,0,0.65), rgba(0,0,0,0.65)), #111', color: '#fff', textAlign: 'center', padding: '90px 20px', transition: 'all 0.4s ease' }}>
+      <header id="home" className="hero-section" style={{
+        backgroundImage: 'linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url("https://res.cloudinary.com/dwpixlcle/image/upload/v1789231837/frthqg0dl4wc7nlonll0.jpg")',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        color: '#fff',
+        textAlign: 'center',
+        padding: '120px 20px',
+        transition: 'all 0.4s ease'
+      }}>
         <div className="hero-content" style={{ maxWidth: '700px', margin: '0 auto' }}>
           <h2 style={{ fontSize: '2.8rem', fontWeight: '700', marginBottom: '15px', letterSpacing: '1px' }}>The Art of Becoming Unforgettable.</h2>
           <p style={{ fontSize: '1.05rem', lineHeight: '1.6', color: '#ddd' }}>Creating more than perfumes—we design invisible masterpieces that reflect confidence, character, and timeless elegance.</p>
@@ -137,9 +171,24 @@ const Home = () => {
         ))}
       </div>
 
-      {/* Product Grid Section */}
-      <div className="container" id="products" style={{ maxWidth: '1200px', margin: '30px auto 60px auto', padding: '0 20px', scrollMarginTop: '40px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '25px' }}>
+      {/* Responsive Product Grid Section (Web: 4 per row, Mobile: 2 per row) */}
+      <div className="container" id="products" style={{ maxWidth: '1200px', margin: '30px auto 60px auto', padding: '0 15px', scrollMarginTop: '40px' }}>
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(2, 1fr)', 
+          gap: '15px',
+        }}>
+          <style>
+            {`
+              @media (min-width: 768px) {
+                #products > div {
+                  grid-template-columns: repeat(4, 1fr) !important;
+                  gap: '25px' !important;
+                }
+              }
+            `}
+          </style>
+
           {filteredProducts.length === 0 ? (
             <p style={{ gridColumn: '1 / -1', textAlign: 'center', color: '#777', padding: '40px' }}>No products found matching your criteria.</p>
           ) : (
@@ -178,58 +227,81 @@ const Home = () => {
 
                   {/* Category Label */}
                   {product.categoryLabel && (
-                    <div style={{ position: 'absolute', top: '12px', left: '12px', background: 'rgba(17, 17, 17, 0.85)', color: '#fff', fontSize: '0.7rem', fontWeight: '700', padding: '5px 12px', borderRadius: '4px', textTransform: 'uppercase', zIndex: 2 }}>
+                    <div style={{ position: 'absolute', top: '10px', left: '10px', background: 'rgba(17, 17, 17, 0.85)', color: '#fff', fontSize: '0.65rem', fontWeight: '700', padding: '4px 10px', borderRadius: '4px', textTransform: 'uppercase', zIndex: 2 }}>
                       {product.categoryLabel}
                     </div>
                   )}
 
                   {/* On Sale Badge */}
                   {isCurrentSizeOnSale && (
-                    <div style={{ position: 'absolute', top: '12px', right: '12px', background: '#fc3737', color: '#fff', fontSize: '0.7rem', fontWeight: '700', padding: '5px 12px', borderRadius: '4px', textTransform: 'uppercase', zIndex: 2, boxShadow: '0 2px 5px rgba(0,0,0,0.2)' }}>
+                    <div style={{ position: 'absolute', top: '10px', right: '10px', background: '#fc3737', color: '#fff', fontSize: '0.65rem', fontWeight: '700', padding: '4px 10px', borderRadius: '4px', textTransform: 'uppercase', zIndex: 2, boxShadow: '0 2px 5px rgba(0,0,0,0.2)' }}>
                       On Sale
                     </div>
                   )}
 
-                  <div style={{ width: '100%', height: '260px', backgroundColor: '#f4f4f4', overflow: 'hidden' }}>
+                  {/* Uniform Image Container (Fixed Height & Center Aligned) */}
+                  <div 
+                    style={{ 
+                      width: '100%', 
+                      height: '210px', 
+                      backgroundColor: '#f8f8f8', 
+                      overflow: 'hidden', 
+                      cursor: 'prime',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      position: 'relative'
+                    }} 
+                    onClick={() => navigate(`/product/${product._id}`)}
+                  >
                     <img
                       src={product.image}
                       alt={product.name}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      style={{ 
+                        width: '100%', 
+                        height: '100%', 
+                        objectFit: 'cover', 
+                        objectPosition: 'center',
+                        display: 'block' 
+                      }}
                     />
                   </div>
 
-                  <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
-                    <h3 style={{ fontSize: '1.15rem', fontWeight: '700', marginBottom: '6px', color: '#111' }}>
+                  <div style={{ padding: '15px', display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
+                    <h3 
+                      onClick={() => navigate(`/product/${product._id}`)}
+                      style={{ fontSize: '1rem', fontWeight: '700', marginBottom: '6px', color: '#111', cursor: 'pointer', lineHeight: '1.3' }}
+                    >
                       {product.name}
                     </h3>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: '#777', marginBottom: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.75rem', color: '#777', marginBottom: '8px' }}>
                       <span style={{ color: '#f59e0b' }}>★ ★ ★ ★ ★</span>
-                      <span><b>{product.rating || 5}</b> ({product.reviewsCount || 0} reviews)</span>
+                      <span><b>{product.rating || 5}</b> ({product.reviewsCount || 0})</span>
                     </div>
 
-                    <p style={{ fontSize: '0.85rem', color: '#666', marginBottom: '15px', flexGrow: 1, lineHeight: '1.5' }}>{product.description}</p>
+                    <p style={{ fontSize: '0.8rem', color: '#666', marginBottom: '12px', flexGrow: 1, lineHeight: '1.4', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{product.description}</p>
 
-                    <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
+                    <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
                       <button
                         onClick={() => handleSizeChange(product._id, '50ml')}
-                        style={{ flex: 1, padding: '9px', border: '1px solid #ddd', background: currentSize === '50ml' ? '#111' : '#fff', color: currentSize === '50ml' ? '#fff' : '#111', fontWeight: '600', cursor: 'pointer', borderRadius: '6px', transition: 'all 0.2s ease' }}
+                        style={{ flex: 1, padding: '7px', border: '1px solid #ddd', background: currentSize === '50ml' ? '#111' : '#fff', color: currentSize === '50ml' ? '#fff' : '#111', fontWeight: '600', cursor: 'pointer', borderRadius: '6px', fontSize: '0.8rem', transition: 'all 0.2s ease' }}
                       >
                         50ml
                       </button>
                       <button
                         onClick={() => handleSizeChange(product._id, '100ml')}
-                        style={{ flex: 1, padding: '9px', border: '1px solid #ddd', background: currentSize === '100ml' ? '#111' : '#fff', color: currentSize === '100ml' ? '#fff' : '#111', fontWeight: '600', cursor: 'pointer', borderRadius: '6px', transition: 'all 0.2s ease' }}
+                        style={{ flex: 1, padding: '7px', border: '1px solid #ddd', background: currentSize === '100ml' ? '#111' : '#fff', color: currentSize === '100ml' ? '#fff' : '#111', fontWeight: '600', cursor: 'pointer', borderRadius: '6px', fontSize: '0.8rem', transition: 'all 0.2s ease' }}
                       >
                         100ml
                       </button>
                     </div>
 
                     {/* Price Display Section */}
-                    <div style={{ fontSize: '1.15rem', fontWeight: '700', marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ fontSize: '1.05rem', fontWeight: '700', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                       {isCurrentSizeOnSale ? (
                         <>
-                          <span style={{ color: '#888', fontSize: '0.95rem' }}>
+                          <span style={{ color: '#888', fontSize: '0.85rem' }}>
                             <del>Rs. {regularPrice}</del>
                           </span>
                           <span style={{ color: '#d4af37' }}>Rs. {discountPrice}</span>
@@ -239,46 +311,15 @@ const Home = () => {
                       )}
                     </div>
 
-                    {/* Buy Now Button - Redirects to product details */}
+                    {/* Add to Cart Button */}
                     <button
-                      onClick={() => navigate(`/product/${product._id}`)}
-                      style={{ backgroundColor: '#111', color: '#fff', border: 'none', padding: '12px', width: '100%', fontWeight: '700', borderRadius: '6px', cursor: 'pointer', transition: 'background 0.2s ease' }}
+                      onClick={() => handleAddToCart(product)}
+                      style={{ backgroundColor: '#111', color: '#fff', border: 'none', padding: '10px', width: '100%', fontWeight: '700', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', transition: 'background 0.2s ease' }}
                       onMouseEnter={(e) => e.target.style.backgroundColor = '#333'}
                       onMouseLeave={(e) => e.target.style.backgroundColor = '#111'}
                     >
-                      Buy Now
+                      Add to Cart
                     </button>
-
-                    {/* Reviews Section */}
-                    <div style={{ marginTop: '18px', borderTop: '1px solid #eee', paddingTop: '12px' }}>
-                      <div style={{ fontSize: '0.8rem', fontWeight: '700', marginBottom: '6px' }}>Customer Reviews:</div>
-                      <div style={{ maxHeight: '80px', overflowY: 'auto', marginBottom: '8px' }}>
-                        {product.userReviews && product.userReviews.length > 0 ? (
-                          product.userReviews.map((rev, idx) => (
-                            <div key={idx} style={{ fontSize: '0.75rem', color: '#555', background: '#f9f9f9', padding: '5px 8px', marginTop: '4px', borderRadius: '4px', borderLeft: '2px solid #d4af37' }}>
-                              💬 <b>{rev.name}:</b> {rev.comment}
-                            </div>
-                          ))
-                        ) : (
-                          <div style={{ fontSize: '0.75rem', color: '#999', fontStyle: 'italic' }}>No reviews yet. Be the first!</div>
-                        )}
-                      </div>
-                      <div style={{ display: 'flex', gap: '6px' }}>
-                        <input
-                          type="text"
-                          placeholder="Write a review..."
-                          value={reviewInputs[product._id] || ''}
-                          onChange={(e) => setReviewInputs({ ...reviewInputs, [product._id]: e.target.value })}
-                          style={{ flex: 1, padding: '7px 10px', fontSize: '0.75rem', border: '1px solid #ddd', borderRadius: '4px', outline: 'none' }}
-                        />
-                        <button
-                          onClick={() => handleReviewSubmit(product._id)}
-                          style={{ background: '#111', color: '#fff', border: 'none', padding: '7px 12px', fontSize: '0.75rem', borderRadius: '4px', cursor: 'pointer' }}
-                        >
-                          Post
-                        </button>
-                      </div>
-                    </div>
 
                   </div>
                 </div>
@@ -355,6 +396,18 @@ const Home = () => {
           </form>
         </div>
       </section>
+
+      {/* Footer Section */}
+      <footer style={{ backgroundColor: '#000000', color: '#ffffff', padding: '40px 20px', textAlign: 'center', borderTop: '1px solid #222', fontFamily: 'sans-serif' }}>
+        <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+          <h3 style={{ fontSize: '1.5rem', fontWeight: '800', letterSpacing: '2px', marginBottom: '10px', color: '#ffffff' }}>WISHÉ</h3>
+          <p style={{ fontSize: '0.9rem', color: '#cccccc', marginBottom: '20px' }}>The Art of Becoming Unforgettable.</p>
+          <div style={{ width: '40px', height: '2px', backgroundColor: '#d4af37', margin: '0 auto 20px auto' }}></div>
+          <p style={{ fontSize: '0.85rem', color: '#aaaaaa', margin: 0 }}>
+            &copy; {new Date().getFullYear()} WISHÉ. All rights reserved.
+          </p>
+        </div>
+      </footer>
     </div>
   );
 };

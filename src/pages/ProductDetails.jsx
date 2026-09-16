@@ -12,7 +12,10 @@ const ProductDetails = () => {
   const [quantity, setQuantity] = useState(1);
   const [isFetching, setIsFetching] = useState(true);
   const [addedMessage, setAddedMessage] = useState(false);
-  const [cartCount, setCartCount] = useState(0); // Cart count state for Navbar
+  const [cartCount, setCartCount] = useState(0); 
+
+  // Review Input state moved from Home card to ProductDetails page
+  const [reviewInput, setReviewInput] = useState('');
 
   useEffect(() => {
     // LocalStorage se cart count load karna
@@ -31,6 +34,22 @@ const ProductDetails = () => {
         setIsFetching(false);
       });
   }, [id]);
+
+  // Review Submission Logic
+  const handleReviewSubmit = async () => {
+    if (!reviewInput.trim()) return;
+
+    try {
+      const res = await axios.post(`https://wishebackendserver.vercel.app/api/products/${id}/review`, {
+        name: "Customer",
+        comment: reviewInput
+      });
+      setProduct(res.data);
+      setReviewInput('');
+    } catch (err) {
+      console.error("Error adding review:", err);
+    }
+  };
 
   if (isFetching) {
     return <div style={{ textAlign: 'center', padding: '100px', fontSize: '1.2rem' }}>Loading product details...</div>;
@@ -70,7 +89,6 @@ const ProductDetails = () => {
 
     localStorage.setItem('cart', JSON.stringify(existingCart));
 
-    // Cart count update karein taake Navbar ka bubble foran update ho jaye
     const newTotalCount = existingCart.reduce((acc, item) => acc + item.quantity, 0);
     setCartCount(newTotalCount);
 
@@ -81,8 +99,7 @@ const ProductDetails = () => {
   };
 
   return (
-    <div style={{ fontFamily: 'sans-serif', backgroundColor: '#fafafa', minHeight: '100vh' }}>
-      {/* Navbar ko cartCount prop pass kar di hai */}
+    <div style={{ fontFamily: 'sans-serif', backgroundColor: '#fafafa', minHeight: '100vh', paddingBottom: '60px' }}>
       <Navbar cartCount={cartCount} toggleCart={() => {}} />
 
       <div style={{ maxWidth: '1000px', margin: '40px auto', padding: '0 20px' }}>
@@ -93,7 +110,8 @@ const ProductDetails = () => {
           ← Back to Products
         </button>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '40px', background: '#fff', padding: '35px', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.04)' }}>
+        {/* Main Product Details Box */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '40px', background: '#fff', padding: '35px', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.04)', marginBottom: '40px' }}>
 
           {/* Product Image */}
           <div style={{ width: '100%', height: '380px', backgroundColor: '#f4f4f4', borderRadius: '8px', overflow: 'hidden' }}>
@@ -116,7 +134,7 @@ const ProductDetails = () => {
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', color: '#777', marginBottom: '15px' }}>
               <span style={{ color: '#f59e0b' }}>★ ★ ★ ★ ★</span>
-              <span><b>{product.rating || 5}</b> ({product.reviewsCount || 0} reviews)</span>
+              <span><b>{product.rating || 5}</b> ({product.userReviews?.length || product.reviewsCount || 0} reviews)</span>
             </div>
 
             <p style={{ fontSize: '0.95rem', color: '#666', lineHeight: '1.6', marginBottom: '20px' }}>
@@ -192,6 +210,51 @@ const ProductDetails = () => {
 
           </div>
         </div>
+
+        {/* Dedicated Customer Reviews Section */}
+        <div style={{ background: '#fff', padding: '35px', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.04)' }}>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: '700', marginBottom: '20px', color: '#111', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>
+            Customer Reviews ({product.userReviews?.length || 0})
+          </h2>
+
+          {/* List of existing reviews */}
+          <div style={{ marginBottom: '25px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {product.userReviews && product.userReviews.length > 0 ? (
+              product.userReviews.map((rev, idx) => (
+                <div key={idx} style={{ background: '#f9f9f9', padding: '15px', borderRadius: '8px', borderLeft: '3px solid #d4af37' }}>
+                  <div style={{ fontSize: '0.9rem', fontWeight: '700', color: '#111', marginBottom: '4px' }}>{rev.name}</div>
+                  <div style={{ fontSize: '0.9rem', color: '#555', lineHeight: '1.4' }}>{rev.comment}</div>
+                </div>
+              ))
+            ) : (
+              <p style={{ color: '#777', fontStyle: 'italic', fontSize: '0.95rem' }}>No reviews yet for this product. Be the first to share your thoughts!</p>
+            )}
+          </div>
+
+          {/* Write a review form */}
+          <div style={{ background: '#fcfcfc', border: '1px solid #eaeaea', padding: '20px', borderRadius: '8px' }}>
+            <h3 style={{ fontSize: '1.05rem', fontWeight: '700', marginBottom: '12px', color: '#111' }}>Leave a Review</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <textarea
+                rows="3"
+                placeholder="Write your review here..."
+                value={reviewInput}
+                onChange={(e) => setReviewInput(e.target.value)}
+                style={{ width: '100%', padding: '12px', fontSize: '0.9rem', border: '1px solid #ddd', borderRadius: '6px', outline: 'none', resize: 'vertical' }}
+              ></textarea>
+              <button
+                onClick={handleReviewSubmit}
+                style={{ alignSelf: 'flex-end', background: '#111', color: '#fff', border: 'none', padding: '10px 20px', fontSize: '0.9rem', fontWeight: '600', borderRadius: '6px', cursor: 'pointer', transition: 'background 0.2s ease' }}
+                onMouseEnter={(e) => e.target.style.backgroundColor = '#333'}
+                onMouseLeave={(e) => e.target.style.backgroundColor = '#111'}
+              >
+                Post Review
+              </button>
+            </div>
+          </div>
+
+        </div>
+
       </div>
     </div>
   );
