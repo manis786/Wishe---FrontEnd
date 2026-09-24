@@ -1,59 +1,79 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
-import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
+import { useNavigate, useLocation } from 'react-router-dom';
 import './Navbar.css';
 
 const Navbar = ({ searchQuery, setSearchQuery, cartCount, toggleCart }) => {
-    console.log("Navbar ko milne wala cartCount:", cartCount);
-    return (
-        <nav className="navbar">
-            <div className="nav-container">
-                <Link to="/" className="nav-logo">WISHÉ</Link>
-                
-                {/* Search Bar */}
-                {setSearchQuery && (
-                    <div className="nav-search-box">
-                        <input 
-                            type="text" 
-                            placeholder="Search fragrances..." 
-                            value={searchQuery || ''}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                        />
-                        <i className="fas fa-search">🔍</i>
-                    </div>
-                )}
+  const navigate = useNavigate();
+  const location = useLocation();
 
-                <ul className="nav-menu">
-                    <li><Link to="/" className="nav-link active">Home</Link></li>
-                    <li><a href="/#products" className="nav-link">Fragrance</a></li>
-                    <li><a href="/#about" className="nav-link">About</a></li>
-                    <li><a href="/#contact" className="nav-link">Contact</a></li>
-                </ul>
+  const handleNavClick = (sectionId) => {
+    if (location.pathname !== '/') {
+      navigate('/');
+      setTimeout(() => {
+        const element = document.getElementById(sectionId);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 100);
+    } else {
+      const element = document.getElementById(sectionId);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+  };
 
-                {/* Direct Custom Cart with Bubble */}
-                <div className="nav-cart" onClick={toggleCart} title="Open Cart" style={{ cursor: 'pointer', position: 'relative', display: 'flex', alignItems: 'center', background: '#f4f4f4', padding: '8px 12px', borderRadius: '50px' }}>
-                    <ShoppingCartIcon sx={{ fontSize: '26px', color: '#111' }} />
-                    
-                    {cartCount > 0 && (
-                        <span style={{
-                            position: 'absolute',
-                            top: '-4px',
-                            right: '-4px',
-                            backgroundColor: '#ff4d4f',
-                            color: '#fff',
-                            fontSize: '0.65rem',
-                            padding: '2px 6px',
-                            borderRadius: '50%',
-                            fontWeight: '700',
-                            boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
-                        }}>
-                            {cartCount}
-                        </span>
-                    )}
-                </div>
-            </div>
-        </nav>
-    );
+  return (
+    <nav className="navbar-container">
+      {/* Brand Logo */}
+      <div onClick={() => handleNavClick('home')} className="navbar-logo">
+        WISHÉ
+      </div>
+
+      {/* Search Bar */}
+      <div className="navbar-search-wrapper">
+        <span className="navbar-search-icon">🔍</span>
+        <input
+          type="text"
+          placeholder="Search fragrance..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="navbar-search-input"
+        />
+      </div>
+
+      {/* Navigation Links Linked to Sections */}
+      <div className="navbar-links">
+        <button onClick={() => handleNavClick('home')} className="nav-link">
+          HOME
+        </button>
+        <button onClick={() => handleNavClick('wishe-original')} className="nav-link">
+          FRAGRANCE
+        </button>
+        <button onClick={() => handleNavClick('wishe-original')} className="nav-link">
+          WISHÉ ORIGINAL
+        </button>
+        <button onClick={() => handleNavClick('men')} className="nav-link">
+          MEN
+        </button>
+        <button onClick={() => handleNavClick('women')} className="nav-link">
+          WOMEN
+        </button>
+        <button onClick={() => handleNavClick('about')} className="nav-link">
+          ABOUT
+        </button>
+        <button onClick={() => handleNavClick('contact')} className="nav-link">
+          CONTACT
+        </button>
+      </div>
+
+      {/* Cart Icon with Counter */}
+      <div onClick={toggleCart} className="navbar-cart-wrapper">
+        <div className="navbar-cart-icon">🛒</div>
+        <span className="navbar-cart-badge">{cartCount}</span>
+      </div>
+    </nav>
+  );
 };
 
 export default Navbar;

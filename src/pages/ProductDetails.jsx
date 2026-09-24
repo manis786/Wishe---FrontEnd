@@ -60,15 +60,19 @@ const ProductDetails = () => {
   }
 
   const is100ml = selectedSize === '100ml';
-  const regularPrice = is100ml ? product.price100ml : product.price50ml;
-  const discountPrice = is100ml ? product.discountPrice100ml : product.discountPrice50ml;
-  const isOnSale = discountPrice && String(discountPrice).trim() !== '';
-  const finalPrice = isOnSale ? Number(discountPrice) : Number(regularPrice);
+  const regularPrice = Number(is100ml ? product.price100ml : product.price50ml) || 0;
+  
+  const rawDiscountPrice = is100ml ? product.discountPrice100ml : product.discountPrice50ml;
+  const discountPrice = rawDiscountPrice && String(rawDiscountPrice).trim() !== '' ? Number(rawDiscountPrice) : NaN;
+  
+  const isOnSale = !isNaN(discountPrice) && discountPrice > 0;
+  const finalPrice = isOnSale ? discountPrice : regularPrice;
 
   // Add to Cart Handler
   const handleAddToCart = () => {
     const cartItem = {
-      id: product._id || product.id,
+      id: `${product._id || product.id}-${selectedSize}`,
+      productId: product._id || product.id,
       name: product.name,
       image: product.image,
       size: selectedSize,
@@ -78,7 +82,7 @@ const ProductDetails = () => {
 
     const existingCart = JSON.parse(localStorage.getItem('cart')) || [];
     const existingIndex = existingCart.findIndex(
-      item => item.id === cartItem.id && item.size === cartItem.size
+      item => item.id === cartItem.id
     );
 
     if (existingIndex > -1) {
@@ -199,7 +203,7 @@ const ProductDetails = () => {
               onMouseEnter={(e) => e.target.style.backgroundColor = '#333'}
               onMouseLeave={(e) => e.target.style.backgroundColor = '#111'}
             >
-              {addedMessage ? '✓ Added to Cart!' : `Add to Cart (Rs. ${finalPrice * quantity})`}
+              {addedMessage ? '✓ Added to Cart!' : `Add to Cart (Rs. {finalPrice * quantity})`}
             </button>
 
             {addedMessage && (
@@ -260,4 +264,5 @@ const ProductDetails = () => {
   );
 };
 
+ProductDetails.jsx
 export default ProductDetails;
